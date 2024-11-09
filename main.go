@@ -69,8 +69,18 @@ func main() {
 			action := ""
 			switch update.CallbackQuery.Data {
 			case "OpenVPN":
-				responseText = messages.ButtonOpenVPN
-				action = "Requested OpenVPN config"
+				// Отправляем дополнительные кнопки "Нидерланды" и "Россия" на отдельных строках
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите страну для OpenVPN:")
+				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("🇳🇱 Нидерланды", "OpenVPN_NL"),
+					),
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("🇷🇺 Россия", "OpenVPN_RU"),
+					),
+				)
+				bot.Send(msg)
+				action = "Requested OpenVPN config selection"
 			case "Outline":
 				responseText = messages.ButtonOutline
 				action = "Requested Outline config"
@@ -80,6 +90,14 @@ func main() {
 			case "HttpProxy":
 				responseText = messages.ButtonHttpProxy
 				action = "Requested HttpProxy config"
+			case "OpenVPN_NL":
+				// Текст из messages.json для Нидерландов
+				responseText = messages.ButtonOpenVPN_NL
+				action = "Selected OpenVPN Netherlands"
+			case "OpenVPN_RU":
+				// Текст из messages.json для России
+				responseText = messages.ButtonOpenVPN_RU
+				action = "Selected OpenVPN Russia"
 			default:
 				responseText = messages.UnknownButton
 				action = "Unknown button clicked"
@@ -88,15 +106,18 @@ func main() {
 			// Логируем действие пользователя
 			LogUserAction(update.CallbackQuery.From.ID, update.CallbackQuery.From.UserName, action)
 
-			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, responseText)
-			if _, err := bot.Request(callback); err != nil {
-				log.Println(err)
-			}
+			if responseText != "" {
+				// Отправляем ответ на CallbackQuery и текстовое сообщение
+				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, responseText)
+				if _, err := bot.Request(callback); err != nil {
+					log.Println(err)
+				}
 
-			msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, responseText)
-			_, err := bot.Send(msg)
-			if err != nil {
-				return
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, responseText)
+				_, err := bot.Send(msg)
+				if err != nil {
+					return
+				}
 			}
 		}
 	}

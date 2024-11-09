@@ -9,6 +9,8 @@ type Messages struct {
 	WelcomeMessage      string `json:"welcome_message"`
 	OptionPrompt        string `json:"option_prompt"`
 	ButtonOpenVPN       string `json:"button_OpenVPN"`
+	ButtonOpenVPN_NL    string `json:"button_OpenVPN_NL"`
+	ButtonOpenVPN_RU    string `json:"button_OpenVPN_RU"`
 	ButtonOutline       string `json:"button_Outline"`
 	ButtonTelegramProxy string `json:"button_TelegramProxy"`
 	ButtonHttpProxy     string `json:"button_HttpProxy"`
