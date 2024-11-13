@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
@@ -32,7 +33,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Ошибка подключения к базе данных: %v", err)
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+
+		}
+	}(db)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -79,7 +85,10 @@ func main() {
 						tgbotapi.NewInlineKeyboardButtonData("🇷🇺 Россия", "OpenVPN_RU"),
 					),
 				)
-				bot.Send(msg)
+				_, err := bot.Send(msg)
+				if err != nil {
+					return
+				}
 				action = "Requested OpenVPN config selection"
 			case "Outline":
 				responseText = messages.ButtonOutline
@@ -92,11 +101,11 @@ func main() {
 				action = "Requested HttpProxy config"
 			case "OpenVPN_NL":
 				// Текст из messages.json для Нидерландов
-				responseText = messages.ButtonOpenVPN_NL
+				responseText = messages.ButtonopenvpnNl
 				action = "Selected OpenVPN Netherlands"
 			case "OpenVPN_RU":
 				// Текст из messages.json для России
-				responseText = messages.ButtonOpenVPN_RU
+				responseText = messages.ButtonopenvpnRu
 				action = "Selected OpenVPN Russia"
 			default:
 				responseText = messages.UnknownButton
