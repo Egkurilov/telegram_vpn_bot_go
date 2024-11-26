@@ -5,7 +5,7 @@
   "button_OpenVPN_NL": "Вы нажали на button_OpenVPN NL",
   "button_OpenVPN_RU": "Вы нажали на button_OpenVPN RU",
   "button_Outline": "Вы нажали на button_Outline",
-  "button_TelegramProxy": "Вы нажали на TelegramProxy",
+  "button_TelegramProxy": "Ссылка для Telegram \n- https://t.me/socks?server=cetus.shaneque.ru&port=9443&user=xzhycZSSVgxNgLE&pass=vKRy4rFVOiTJ66s\nДля того что бы им воспользоваться нажмите на ссылку и согласитесь с включением Proxy",
   "button_HttpProxy": "Вы нажали на HttpProxy",
   "unknown_button": "Нажата неизвестная кнопка."
 }

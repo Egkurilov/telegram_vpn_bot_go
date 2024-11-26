@@ -1,0 +1,41 @@
+{
+  "nl": {
+    "name": "🇳🇱 Нидерланды",
+    "server": "local"
+  },
+  "ru": {
+    "name": "🇷🇺 Россия",
+    "server": "tucana.shaneque.ru:8080",
+    "secret": "e5951ee8-bfaa-4109-9fad-b7d8fb410acb"
+  },
+  "outline": {
+    "server": "https://secure.shaneque.ru",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaGFuZXF1ZSIsImFjY2VzcyI6InN1ZG8iLCJpYXQiOjE3MzI2NDU4MTksImV4cCI6MTczMjczMjIxOX0.wzRvzLLFjY7mQdww_QO9SeaqymAYrFwEtcf8H_hJogY"
+  },
+  "openvpn": {
+    "script": "./openvpn-install.sh",
+    "configs": "./"
+  },
+  "users_proxy": [
+    "kXQZPiGbvQqA:cPLjNVGmipBB",
+    "dxkmARZPoEJH:ImZOQGTbRPjr",
+    "oilXlyQvWOGC:EVVTASWIZNxn",
+    "caMhXPHyBRrp:IKdhwrXBlamL",
+    "dHFyiRDvvkOs:kJzmxyzuLQkl",
+    "yxevYlkwjXcr:tAQkmuSDCrVW",
+    "FPtVuhMaqvgT:dNuwNUAjPcyi",
+    "WchMebmbSIHR:eLjmxwBROLEV",
+    "VpKhWxRojPHb:wcasWRdaHhoe",
+    "ckSeEdaGWhqj:IhVBlLhweEyw",
+    "VtfnIiIzWqQJ:hYaMbDnkNLuH",
+    "eLZlWfqjFaxY:osTgnsIjYxjJ",
+    "RSvsUmQkUvay:CewnGuBdcCBf",
+    "rRaAWlffJslx:BecwOOCUQDuV",
+    "tKzzdjKmcDDN:FtyBITNtVbzQ",
+    "tKsPbMjYAAoo:oUOhPQqCZLXR",
+    "mSqxgHZyqkkK:MkMMZAuvIAnY",
+    "QUPKXqIUseOm:MbFhdAXJoxkA",
+    "ONCALijabSMq:NZGYGKlvqFkk",
+    "FBJRewEUkJkO:mZHDRKwXQIPD"
+  ]
+}
