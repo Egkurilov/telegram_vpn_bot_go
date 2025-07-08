@@ -71,6 +71,12 @@ func CheckUserExists(userID, userName, OutlineServer, OutlineToken string) (stri
 func CreateNewUser(userId, userName, OutlineServer, OutlineToken string) (string, error) {
 	requestBody := map[string]interface{}{
 		"username": userName + "_" + userId,
+		"inbounds": map[string]interface{}{
+			"shadowsocks": []interface{}{
+				"Shadowsocks TCP",
+			},
+		},
+		"status": "active",
 		"proxies": map[string]interface{}{
 			"shadowsocks": map[string]string{
 				"method": "chacha20-ietf-poly1305",

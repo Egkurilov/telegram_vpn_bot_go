@@ -264,7 +264,9 @@ func sendDocument(chatID int64, filePath string) error {
 func sendMessage(chatID int64, text string, keyboard tgbotapi.ReplyKeyboardMarkup) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ReplyMarkup = keyboard
-	msg.ParseMode = tgbotapi.ModeMarkdown
+	if strings.Contains(text, "```") {
+		msg.ParseMode = tgbotapi.ModeMarkdown
+	}
 	msg.DisableWebPagePreview = true
 	if _, err := bot.Send(msg); err != nil {
 		log.Printf("Ошибка отправки сообщения: %v", err)
