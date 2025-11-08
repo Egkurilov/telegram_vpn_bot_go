@@ -23,7 +23,31 @@ var (
 	defaultKeyboard = getDefaultKeyboard()
 )
 
+func initLogger() *os.File {
+	logDir := "./logs"
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			log.Fatalf("Не удалось создать директорию логов: %v", err)
+		}
+	}
+
+	logFile := fmt.Sprintf("%s/bot_%s.log", logDir, time.Now().Format("2006-01-02"))
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Ошибка открытия файла логов: %v", err)
+	}
+
+	mw := io.MultiWriter(os.Stdout, f) // лог и на экран, и в файл
+	log.SetOutput(mw)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+	return f
+}
+
 func main() {
+	logFile := initLogger()
+	defer logFile.Close()
+
 	var err error
 	messages, err = loadMessages("messages.json")
 	if err != nil {
@@ -44,7 +68,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	bot.Debug = true
+	bot.Debug = false
 	log.Printf("Авторизация прошла успешно как %s", bot.Self.UserName)
 
 	db, err := InitDB("./user_actions.db")
