@@ -7,6 +7,12 @@ on:
   push:
     branches: [ main ]
 
+env:
+  DEPLOY_HOST: 46.151.31.207
+  DEPLOY_DIR: /root/go_vpn_bot
+  TMUX_SESSION: go_vpn_bot
+  BIN_NAME: telegram_vpn_bot_go
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -26,8 +32,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc sqlite3 libsqlite3-dev
 
-      # ВАЖНО: собираем ТОЛЬКО корневой main-пакет ('.'), а не ./...
-      - name: Build linux/amd64
+      - name: Build linux/amd64 (CGO=1)
         env:
           CGO_ENABLED: 1
           GOOS: linux
@@ -36,49 +41,55 @@ jobs:
           go version
           mkdir -p build
           go build -trimpath -buildvcs=false -ldflags="-s -w" \
-            -o build/telegram_vpn_bot_go .
+            -o build/${BIN_NAME} .
 
-      - name: Prepare SSH
+      # Подключаем ssh-agent, чтобы ключ корректно загрузился
+      - name: Use SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # если ключ с паролем, раскомментируй:
+          # ssh-passphrase: ${{ secrets.SSH_PASSPHRASE }}
+
+      - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H 84.200.91.228 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${DEPLOY_HOST} >> ~/.ssh/known_hosts
 
       - name: Upload binary
         run: |
-          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@84.200.91.228 "mkdir -p /root/go_vpn_bot"
-          scp -o StrictHostKeyChecking=yes -o ConnectTimeout=10 build/telegram_vpn_bot_go \
-              root@84.200.91.228:/root/go_vpn_bot/telegram_vpn_bot_go.new
-          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@84.200.91.228 "chmod +x /root/go_vpn_bot/telegram_vpn_bot_go.new"
+          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@${DEPLOY_HOST} "mkdir -p ${DEPLOY_DIR}"
+          scp -o StrictHostKeyChecking=yes -o ConnectTimeout=10 build/${BIN_NAME} \
+              root@${DEPLOY_HOST}:${DEPLOY_DIR}/${BIN_NAME}.new
+          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@${DEPLOY_HOST} \
+              "chmod +x ${DEPLOY_DIR}/${BIN_NAME}.new"
 
       - name: Deploy & Restart via tmux
         env:
-          SSH_HOST: 84.200.91.228
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@$SSH_HOST bash -c "'
+          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@${DEPLOY_HOST} bash -c "'
             set -e
-            cd /root/go_vpn_bot
+            cd ${DEPLOY_DIR}
 
             # Бэкап предыдущей версии
-            if [ -f telegram_vpn_bot_go ]; then
-              cp -f telegram_vpn_bot_go telegram_vpn_bot_go.bak || true
+            if [ -f ${BIN_NAME} ]; then
+              cp -f ${BIN_NAME} ${BIN_NAME}.bak || true
             fi
 
             # Остановить старую сессию (если есть)
-            tmux has-session -t go_vpn_bot 2>/dev/null && tmux kill-session -t go_vpn_bot || true
+            tmux has-session -t ${TMUX_SESSION} 2>/dev/null && tmux kill-session -t ${TMUX_SESSION} || true
 
             # Обновить бинарь
-            mv -f telegram_vpn_bot_go.new telegram_vpn_bot_go
-            chmod +x telegram_vpn_bot_go
+            mv -f ${BIN_NAME}.new ${BIN_NAME}
+            chmod +x ${BIN_NAME}
             mkdir -p logs
 
             # Запуск новой сессии
-            tmux new-session -d -s go_vpn_bot \"TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN ./telegram_vpn_bot_go >> logs/bot.log 2>&1\"
+            tmux new-session -d -s ${TMUX_SESSION} \"TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN} ./\${BIN_NAME} >> logs/bot.log 2>&1\"
 
             sleep 2
-            tmux has-session -t go_vpn_bot 2>/dev/null || { echo \"❌ tmux не стартанул\"; exit 1; }
+            tmux has-session -t ${TMUX_SESSION} 2>/dev/null || { echo \"❌ tmux не стартанул\"; exit 1; }
 
             echo \"📋 Последние строки лога:\"
             tail -n 50 logs/bot.log || true
