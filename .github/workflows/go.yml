@@ -21,12 +21,13 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Install build deps (CGO)
+      - name: Install build deps (CGO for sqlite3)
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc sqlite3 libsqlite3-dev
 
-      - name: Build (linux/amd64, CGO=1)
+      # ВАЖНО: собираем ТОЛЬКО корневой main-пакет ('.'), а не ./...
+      - name: Build linux/amd64
         env:
           CGO_ENABLED: 1
           GOOS: linux
@@ -34,8 +35,8 @@ jobs:
         run: |
           go version
           mkdir -p build
-          go build -trimpath -buildvcs=false -ldflags="-s -w" -o build/telegram_vpn_bot_go ./cmd/... || \
-          go build -trimpath -buildvcs=false -ldflags="-s -w" -o build/telegram_vpn_bot_go ./...
+          go build -trimpath -buildvcs=false -ldflags="-s -w" \
+            -o build/telegram_vpn_bot_go .
 
       - name: Prepare SSH
         run: |
@@ -47,7 +48,8 @@ jobs:
       - name: Upload binary
         run: |
           ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@84.200.91.228 "mkdir -p /root/go_vpn_bot"
-          scp -o StrictHostKeyChecking=yes -o ConnectTimeout=10 build/telegram_vpn_bot_go root@84.200.91.228:/root/go_vpn_bot/telegram_vpn_bot_go.new
+          scp -o StrictHostKeyChecking=yes -o ConnectTimeout=10 build/telegram_vpn_bot_go \
+              root@84.200.91.228:/root/go_vpn_bot/telegram_vpn_bot_go.new
           ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@84.200.91.228 "chmod +x /root/go_vpn_bot/telegram_vpn_bot_go.new"
 
       - name: Deploy & Restart via tmux
@@ -59,20 +61,20 @@ jobs:
             set -e
             cd /root/go_vpn_bot
 
-            # Бэкап предыдущей версии (если была)
+            # Бэкап предыдущей версии
             if [ -f telegram_vpn_bot_go ]; then
               cp -f telegram_vpn_bot_go telegram_vpn_bot_go.bak || true
             fi
 
-            # Остановка старой сессии
+            # Остановить старую сессию (если есть)
             tmux has-session -t go_vpn_bot 2>/dev/null && tmux kill-session -t go_vpn_bot || true
 
-            # Обновление бинаря
+            # Обновить бинарь
             mv -f telegram_vpn_bot_go.new telegram_vpn_bot_go
             chmod +x telegram_vpn_bot_go
             mkdir -p logs
 
-            # Запуск новой сессии (лог в файл)
+            # Запуск новой сессии
             tmux new-session -d -s go_vpn_bot \"TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN ./telegram_vpn_bot_go >> logs/bot.log 2>&1\"
 
             sleep 2
