@@ -1,26 +1,83 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-name: Go
+name: Deploy TG Bot
 
 on:
-  push:
-    branches: [ "master" ]
+  workflow_dispatch:
   pull_request:
-    branches: [ "master" ]
+    branches: [ main ]
+  push:
+    branches: [ main ]
 
 jobs:
-
-  build:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Build
-        uses: hashicorp/actions-go-build@main
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go (from go.mod)
+        uses: actions/setup-go@v5
         with:
-          go_version: 1.23
-          os: linux
-          arch: amd64
-          debug: true
-          instructions: |
-            go build -o "$BIN_PATH" -trimpath -buildvcs=false
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Install build deps (CGO)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc sqlite3 libsqlite3-dev
+
+      - name: Build (linux/amd64, CGO=1)
+        env:
+          CGO_ENABLED: 1
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go version
+          mkdir -p build
+          go build -trimpath -buildvcs=false -ldflags="-s -w" -o build/telegram_vpn_bot_go ./cmd/... || \
+          go build -trimpath -buildvcs=false -ldflags="-s -w" -o build/telegram_vpn_bot_go ./...
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 84.200.91.228 >> ~/.ssh/known_hosts
+
+      - name: Upload binary
+        run: |
+          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@84.200.91.228 "mkdir -p /root/go_vpn_bot"
+          scp -o StrictHostKeyChecking=yes -o ConnectTimeout=10 build/telegram_vpn_bot_go root@84.200.91.228:/root/go_vpn_bot/telegram_vpn_bot_go.new
+          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@84.200.91.228 "chmod +x /root/go_vpn_bot/telegram_vpn_bot_go.new"
+
+      - name: Deploy & Restart via tmux
+        env:
+          SSH_HOST: 84.200.91.228
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@$SSH_HOST bash -c "'
+            set -e
+            cd /root/go_vpn_bot
+
+            # Бэкап предыдущей версии (если была)
+            if [ -f telegram_vpn_bot_go ]; then
+              cp -f telegram_vpn_bot_go telegram_vpn_bot_go.bak || true
+            fi
+
+            # Остановка старой сессии
+            tmux has-session -t go_vpn_bot 2>/dev/null && tmux kill-session -t go_vpn_bot || true
+
+            # Обновление бинаря
+            mv -f telegram_vpn_bot_go.new telegram_vpn_bot_go
+            chmod +x telegram_vpn_bot_go
+            mkdir -p logs
+
+            # Запуск новой сессии (лог в файл)
+            tmux new-session -d -s go_vpn_bot \"TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN ./telegram_vpn_bot_go >> logs/bot.log 2>&1\"
+
+            sleep 2
+            tmux has-session -t go_vpn_bot 2>/dev/null || { echo \"❌ tmux не стартанул\"; exit 1; }
+
+            echo \"📋 Последние строки лога:\"
+            tail -n 50 logs/bot.log || true
+          '"
